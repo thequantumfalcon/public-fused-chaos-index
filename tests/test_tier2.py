@@ -97,6 +97,41 @@ class Tier2Tests(unittest.TestCase):
             self.assertEqual(data.get("experiment"), "Tier-2 Path 2: Cosmic vs Collatz Fingerprint")
             self.assertTrue((out_dir / "tier2_path2_fingerprint_results.npz").exists())
 
+    def test_tier2_collatz_summary_writes_manifest(self):
+        from fused_chaos_index.tier2.collatz_run_summary import run_collatz_run_summary
+
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            out_dir = td_path / "out"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            mass = np.abs(rng.normal(size=(1000,))).astype(np.float64) + 1e-6
+            evals = np.sort(np.abs(rng.normal(size=(8,))).astype(np.float64) + 1e-3)
+            collatz_npz = td_path / "collatz.npz"
+            np.savez(collatz_npz, quantum_mass=mass, eigenvalues=evals, dark_percent=np.float64(67.3))
+
+            baseline_npz = td_path / "baseline.npz"
+            np.savez(baseline_npz, quantum_mass=mass * 1.1, dark_percent=np.float64(66.1))
+
+            m = run_collatz_run_summary(
+                output_dir=out_dir,
+                collatz_npz=collatz_npz,
+                baseline_npz=baseline_npz,
+                threshold=5e-7,
+                cosmic_target=68.0,
+                runtime_seconds=136.0,
+            )
+            self.assertEqual(m.get("status"), "OK")
+
+            mp = out_dir / "tier2_collatz_run_summary_manifest.json"
+            self.assertTrue(mp.exists())
+            data = json.loads(mp.read_text(encoding="utf-8"))
+            self.assertEqual(data.get("experiment"), "Tier-2: Collatz Run Summary (Manuscript Stats)")
+            self.assertTrue((out_dir / "tier2_collatz_run_summary_results.npz").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

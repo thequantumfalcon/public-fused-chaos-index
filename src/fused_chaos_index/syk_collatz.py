@@ -26,7 +26,7 @@ def compute_syk_collatz_fci_constant(
     """Compute the SYK–Collatz constant-approximation FCI value.
 
     The research script effectively uses a constant approximation:
-    $C = (kurt_{Collatz} * kurt_{SYK}) * \int_0^\infty (1/N) e^{-F/N} dF$.
+    $C = (kurt_{Collatz} * kurt_{SYK}) * \\int_0^\\infty (1/N) e^{-F/N} dF$.
 
     With that integrand, the integral is 1, so the analytic result is simply:
     $C = kurt_{Collatz} * kurt_{SYK}$.

@@ -115,6 +115,32 @@ def main(argv: list[str] | None = None) -> int:
     )
     t2_f.add_argument("--threshold", type=float, default=5e-7)
 
+    t2_c = tier2_sub.add_parser(
+        "collatz-summary",
+        help="Summarize a Collatz NPZ (dark%, stats, and spectral gap ratio if available)",
+    )
+    t2_c.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    t2_c.add_argument(
+        "--collatz",
+        type=Path,
+        required=True,
+        help="Collatz NPZ containing quantum_mass (or mass/M), and optionally eigenvalues",
+    )
+    t2_c.add_argument(
+        "--baseline",
+        type=Path,
+        default=None,
+        help="Optional baseline NPZ for comparison (e.g., 10M)",
+    )
+    t2_c.add_argument("--threshold", type=float, default=5e-7)
+    t2_c.add_argument("--cosmic-target", type=float, default=68.0)
+    t2_c.add_argument(
+        "--runtime-seconds",
+        type=float,
+        default=None,
+        help="Optional runtime (seconds) to record in the manifest (not inferred from NPZ)",
+    )
+
     gate = sub.add_parser("gate", help="Falsification/null-test presence gate for suite manifests")
     gate.add_argument("--frontier-manifest", type=Path, default=Path("validation_results/frontier_evidence_suite_manifest.json"))
     gate.add_argument("--universality-manifest", type=Path, default=Path("validation_results/universality_ground_truth_suite_manifest.json"))
@@ -338,6 +364,22 @@ def main(argv: list[str] | None = None) -> int:
                 threshold=float(args.threshold),
             )
             out_path = run_dir / "tier2_path2_fingerprint_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.tier2_cmd == "collatz-summary":
+            from .tier2.collatz_run_summary import run_collatz_run_summary
+
+            run_dir = default_run_dir(args.output_dir)
+            run_collatz_run_summary(
+                output_dir=run_dir,
+                collatz_npz=args.collatz,
+                baseline_npz=args.baseline,
+                threshold=float(args.threshold),
+                cosmic_target=float(args.cosmic_target),
+                runtime_seconds=(None if args.runtime_seconds is None else float(args.runtime_seconds)),
+            )
+            out_path = run_dir / "tier2_collatz_run_summary_manifest.json"
             print(str(out_path))
             return 0
 
