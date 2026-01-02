@@ -2,6 +2,8 @@
 
 ## 0.1.12 — 2026-01-02
 
+This release adds a low-maintenance documentation site and strengthens “offline-first” onboarding and CI coverage.
+
 - Add MkDocs documentation site (Material theme) and API reference pages.
 - Add tiny committed example NPZ artifacts and generator script for offline demos.
 - Expand CI to run tests on Ubuntu + Windows and add extras/docs smoke checks.
