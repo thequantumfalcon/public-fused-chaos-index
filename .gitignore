@@ -34,5 +34,9 @@ venv/
 # Generated suite outputs
 validation_results/
 
+# Local smoke test outputs
+_smoke_inputs/
+_smoke_out/
+
 # Local caches (never commit)
 .fci_cache/

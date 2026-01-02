@@ -133,6 +133,28 @@ class SuiteTests(unittest.TestCase):
                 self.assertIn("kappa_sha256", c0["provenance"])
                 self.assertIn("p_permutation", c0["null_test"])
 
+    def test_validators_write_manifest_on_skip(self):
+        from fused_chaos_index.validators.bolshoi import run_bolshoi_ground_truth
+        from fused_chaos_index.validators.tng import run_tng_ground_truth
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "out"
+
+            bol = run_bolshoi_ground_truth(output_dir=out_dir, allow_network=False)
+            bol_path = out_dir / "halotools_bolshoi_ground_truth_manifest.json"
+            self.assertTrue(bol_path.exists())
+            bol_data = json.loads(bol_path.read_text(encoding="utf-8"))
+            self.assertIn(bol_data.get("status"), {"OK", "SKIP", "ERROR"})
+            self.assertIn(bol.status, {"OK", "SKIP", "ERROR"})
+
+            # Force deterministic SKIP by giving a base_path that does not exist.
+            tng = run_tng_ground_truth(base_path=Path(td) / "NO_SUCH_TNG", output_dir=out_dir)
+            tng_path = out_dir / "tng_validation_manifest.json"
+            self.assertTrue(tng_path.exists())
+            tng_data = json.loads(tng_path.read_text(encoding="utf-8"))
+            self.assertIn(tng_data.get("status"), {"OK", "SKIP", "ERROR"})
+            self.assertIn(tng.status, {"OK", "SKIP", "ERROR"})
+
 
 if __name__ == "__main__":
     unittest.main()

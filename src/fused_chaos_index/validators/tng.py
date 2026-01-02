@@ -100,13 +100,34 @@ def run_tng_ground_truth(
         import importlib.util
 
         if importlib.util.find_spec("illustris_python") is None:
-            return TNGResult(status="SKIP", results={"reason": "missing optional dep: illustris_python"})
+            payload = {
+                "experiment": "IllustrisTNG Ground-Truth Validation",
+                "time_utc": _now_iso(),
+                "status": "SKIP",
+                "reason": "missing optional dep: illustris_python",
+            }
+            manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+            return TNGResult(status="SKIP", results=payload)
         import illustris_python as il  # type: ignore
     except Exception as e:
-        return TNGResult(status="SKIP", results={"reason": f"illustris_python unavailable: {type(e).__name__}: {e}"})
+        payload = {
+            "experiment": "IllustrisTNG Ground-Truth Validation",
+            "time_utc": _now_iso(),
+            "status": "SKIP",
+            "reason": f"illustris_python unavailable: {type(e).__name__}: {e}",
+        }
+        manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return TNGResult(status="SKIP", results=payload)
 
     if not base_path.exists():
-        return TNGResult(status="SKIP", results={"reason": f"base_path not found: {base_path}"})
+        payload = {
+            "experiment": "IllustrisTNG Ground-Truth Validation",
+            "time_utc": _now_iso(),
+            "status": "SKIP",
+            "reason": f"base_path not found: {base_path}",
+        }
+        manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return TNGResult(status="SKIP", results=payload)
 
     try:
         fields = ["SubhaloPos", "SubhaloMassType"]

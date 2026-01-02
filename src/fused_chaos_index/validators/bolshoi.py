@@ -197,7 +197,14 @@ def run_bolshoi_ground_truth(
         import halotools  # noqa: F401
         import h5py  # noqa: F401
     except Exception as e:
-        return BolshoiResult(status="SKIP", results={"reason": f"missing optional deps: {type(e).__name__}: {e}"})
+        payload = {
+            "experiment": "Bolshoi (Halotools) Ground-Truth Validation",
+            "time_utc": _now_iso(),
+            "status": "SKIP",
+            "reason": f"missing optional deps: {type(e).__name__}: {e}",
+        }
+        manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return BolshoiResult(status="SKIP", results=payload)
 
     # Prevent implicit downloads unless explicitly allowed.
     if not allow_network:
@@ -216,10 +223,14 @@ def run_bolshoi_ground_truth(
                 )
             )
             if not matches:
-                return BolshoiResult(
-                    status="SKIP",
-                    results={"reason": "Bolshoi not in Halotools cache and allow_network is False"},
-                )
+                payload = {
+                    "experiment": "Bolshoi (Halotools) Ground-Truth Validation",
+                    "time_utc": _now_iso(),
+                    "status": "SKIP",
+                    "reason": "Bolshoi not in Halotools cache and allow_network is False",
+                }
+                manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+                return BolshoiResult(status="SKIP", results=payload)
         except Exception:
             # If the cache check fails, still attempt; load_bolshoi_halos will error if missing.
             pass
