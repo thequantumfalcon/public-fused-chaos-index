@@ -7,6 +7,7 @@ __pycache__/
 .dist/
 build/
 .venv/
+.venv_pubcheck/
 venv/
 .env
 
@@ -43,6 +44,10 @@ _captest/
 _tng_npz_test/
 _universality_npz_test/
 _full_profile_npz_test/
+
+# Local public-release sanity check outputs
+_pubcheck_smoke_out/
+_pubcheck_offline_out/
 
 # Local caches (never commit)
 .fci_cache/
