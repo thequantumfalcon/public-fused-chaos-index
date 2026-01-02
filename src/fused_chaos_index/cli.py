@@ -1,0 +1,210 @@
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from .operational import StreamlinedFCIPipeline
+from .syk_collatz import compute_syk_collatz_fci_constant
+from .meta_tools import ablation_sensitivity, combine_evidence_heuristic, keyword_risk_audit
+from .gate import check_frontier_manifest, check_universality_manifest
+from .tier1.extract_radec import extract_radec_to_npz
+from .tier1.score_frontier import load_thresholds, score_frontier_manifest
+from .tier1.score_single import score_single_artifact
+from .suite import default_run_dir, run_public_suite
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="fci", description="Public Fused Chaos Index utilities")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    op = sub.add_parser("operational", help="Run the streamlined operational FCI demo")
+    op.add_argument("--n-galaxies", type=int, default=2000)
+    op.add_argument("--k", type=int, default=10, help="k-NN neighbors")
+    op.add_argument("--seed", type=int, default=42)
+
+    sc = sub.add_parser("syk-collatz", help="Compute SYK–Collatz constant-approximation FCI")
+    sc.add_argument("--N", type=int, default=32)
+    sc.add_argument("--kurt-collatz", type=float, default=3.72)
+    sc.add_argument("--kurt-syk", type=float, default=-1.23)
+    sc.add_argument("--method", choices=["analytic", "quad", "mc"], default="analytic")
+
+    meta = sub.add_parser("meta", help="Meta-tools (audits, evidence aggregation, robustness diagnostics)")
+    meta_sub = meta.add_subparsers(dest="meta_cmd", required=True)
+
+    audit = meta_sub.add_parser("audit", help="Keyword risk audit for a string")
+    audit.add_argument("text")
+
+    comb = meta_sub.add_parser("combine", help="Combine evidence strengths (heuristic)")
+    comb.add_argument("--prior", type=float, default=0.5)
+    comb.add_argument("evidences", nargs="+", type=float)
+
+    abl = meta_sub.add_parser("ablation", help="Ablation sensitivity diagnostic")
+    abl.add_argument("--method", choices=["spearman", "pearson"], default="spearman")
+    abl.add_argument("--n-trials", type=int, default=200)
+    abl.add_argument("--seed", type=int, default=42)
+    abl.add_argument("x", nargs="+", type=float)
+    abl.add_argument("--y", nargs="+", type=float, required=True)
+
+    tier1 = sub.add_parser("tier1", help="Tier-1 helpers (catalog conversion, scoring)")
+    tier1_sub = tier1.add_subparsers(dest="tier1_cmd", required=True)
+
+    er = tier1_sub.add_parser("extract-radec", help="Extract RA/Dec from a table catalog into NPZ")
+    er.add_argument("--catalog", type=Path, required=True)
+    er.add_argument("--out-npz", type=Path, required=True)
+    er.add_argument("--ra-col", type=str, default=None)
+    er.add_argument("--dec-col", type=str, default=None)
+    er.add_argument("--max-rows", type=int, default=0)
+
+    ss = tier1_sub.add_parser("score-single", help="Score a single artifact JSON vs a Tier-1 prediction card")
+    ss.add_argument("--prediction-card-json", type=Path, required=True)
+    ss.add_argument("--artifact-json", type=Path, required=True)
+    ss.add_argument("--out-json", type=Path, default=Path("tier1_single_kappa_score.json"))
+
+    sf = tier1_sub.add_parser("score-frontier", help="Score a Frontier manifest JSON vs a Tier-1 prediction card")
+    sf.add_argument("--prediction-card", type=Path, required=True)
+    sf.add_argument("--frontier-manifest", type=Path, required=True)
+    sf.add_argument("--out-json", type=Path, default=Path("tier1_frontier_accuracy.json"))
+
+    gate = sub.add_parser("gate", help="Falsification/null-test presence gate for suite manifests")
+    gate.add_argument("--frontier-manifest", type=Path, default=Path("validation_results/frontier_evidence_suite_manifest.json"))
+    gate.add_argument("--universality-manifest", type=Path, default=Path("validation_results/universality_ground_truth_suite_manifest.json"))
+
+    suite = sub.add_parser("suite", help="Offline-first suite runner (writes a single manifest)")
+    suite_sub = suite.add_subparsers(dest="suite_cmd", required=True)
+
+    suite_run = suite_sub.add_parser("run", help="Run the public suite")
+    suite_run.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    suite_run.add_argument("--n-galaxies", type=int, default=2000)
+    suite_run.add_argument("--k", type=int, default=10)
+    suite_run.add_argument("--seed", type=int, default=42)
+    suite_run.add_argument("--n-eigenstates", type=int, default=40)
+    suite_run.add_argument("--syk-N", type=int, default=32)
+    suite_run.add_argument("--kurt-collatz", type=float, default=3.72)
+    suite_run.add_argument("--kurt-syk", type=float, default=-1.23)
+    suite_run.add_argument("--method", choices=["analytic", "quad", "mc"], default="analytic")
+    suite_run.add_argument(
+        "--frontier-manifest",
+        type=Path,
+        default=Path("validation_results/frontier_evidence_suite_manifest.json"),
+    )
+    suite_run.add_argument(
+        "--universality-manifest",
+        type=Path,
+        default=Path("validation_results/universality_ground_truth_suite_manifest.json"),
+    )
+
+    args = parser.parse_args(argv)
+
+    if args.cmd == "operational":
+        pipeline = StreamlinedFCIPipeline(k_neighbors=args.k, seed=args.seed)
+        results = pipeline.run(n_galaxies=args.n_galaxies)
+        fci = results["fci"]
+        print(f"FCI (normalized): {fci.fci_normalized:.6f}")
+        print(f"Regime: {fci.physical_regime}")
+        return 0
+
+    if args.cmd == "syk-collatz":
+        r = compute_syk_collatz_fci_constant(
+            N=args.N,
+            kurt_collatz=args.kurt_collatz,
+            kurt_syk=args.kurt_syk,
+            method=args.method,
+        )
+        print(f"C: {r.C:.6f}")
+        return 0
+
+    if args.cmd == "meta":
+        if args.meta_cmd == "audit":
+            status, matched = keyword_risk_audit(args.text)
+            print(status)
+            if matched:
+                print("matched=" + ",".join(matched))
+            return 0
+
+        if args.meta_cmd == "combine":
+            s = combine_evidence_heuristic(args.evidences, prior=args.prior)
+            print(f"score: {s:.6f}")
+            return 0
+
+        if args.meta_cmd == "ablation":
+            import numpy as np
+
+            x = np.asarray(args.x, dtype=np.float64)
+            y = np.asarray(args.y, dtype=np.float64)
+            r = ablation_sensitivity(x, y, n_trials=args.n_trials, method=args.method, seed=args.seed)
+            print(json.dumps(r.__dict__, indent=2, sort_keys=True))
+            return 0
+
+    if args.cmd == "tier1":
+        if args.tier1_cmd == "extract-radec":
+            out = extract_radec_to_npz(
+                catalog_path=args.catalog,
+                out_npz=args.out_npz,
+                ra_col=args.ra_col,
+                dec_col=args.dec_col,
+                max_rows=args.max_rows,
+            )
+            print(json.dumps(out, indent=2, sort_keys=True))
+            return 0
+
+        if args.tier1_cmd == "score-single":
+            report = score_single_artifact(
+                prediction_card_json=args.prediction_card_json,
+                artifact_json=args.artifact_json,
+            )
+            args.out_json.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+            print(str(args.out_json))
+            return 0
+
+        if args.tier1_cmd == "score-frontier":
+            th = load_thresholds(args.prediction_card)
+            summary = score_frontier_manifest(manifest_path=args.frontier_manifest, thresholds=th)
+            args.out_json.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+            print(str(args.out_json))
+            return 0
+
+    if args.cmd == "gate":
+        issues: list[str] = []
+        if args.frontier_manifest.exists():
+            issues.extend(check_frontier_manifest(args.frontier_manifest))
+            print("frontier: OK" if not any(s.startswith("frontier") for s in issues) else "frontier: FAIL")
+        else:
+            print("frontier: SKIP (manifest not found)")
+
+        if args.universality_manifest.exists():
+            issues.extend(check_universality_manifest(args.universality_manifest))
+            print("universality: OK" if not any(s.startswith("universality") for s in issues) else "universality: FAIL")
+        else:
+            print("universality: SKIP (manifest not found)")
+
+        if issues:
+            print("\nISSUES:")
+            for s in issues:
+                print("- " + s)
+            return 1
+
+        print("\nGATE: PASS")
+        return 0
+
+    if args.cmd == "suite":
+        if args.suite_cmd == "run":
+            run_dir = default_run_dir(args.output_dir)
+            manifest = run_public_suite(
+                run_dir=run_dir,
+                operational_n_galaxies=args.n_galaxies,
+                operational_k=args.k,
+                operational_seed=args.seed,
+                operational_n_eigenstates=args.n_eigenstates,
+                syk_N=args.syk_N,
+                syk_kurt_collatz=args.kurt_collatz,
+                syk_kurt_syk=args.kurt_syk,
+                syk_method=args.method,
+                frontier_manifest=args.frontier_manifest,
+                universality_manifest=args.universality_manifest,
+            )
+            out_path = Path(manifest["run_dir"]) / "suite_manifest.json"
+            print(str(out_path))
+            return 0
+
+    return 2

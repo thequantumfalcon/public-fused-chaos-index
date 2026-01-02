@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "thequantumfalcon"
+    given-names: ""
+title: "Public Fused Chaos Index"
+version: 0.1.0
+date-released: 2026-01-01
+url: "https://github.com/thequantumfalcon/public-fused-chaos-index"
+repository-code: "https://github.com/thequantumfalcon/public-fused-chaos-index"
+license: MIT
+keywords:
+  - graph spectral analysis
+  - chaos index
+  - cosmology
+abstract: |
+  Minimal public release of core routines to compute the Fused Chaos Index (FCI)
+  from a k-NN graph Hamiltonian spectrum, including IPR and spectral form factor
+  diagnostics. Scientific interpretation requires independent validation.

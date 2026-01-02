@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+.dist/
+build/
+.venv/
+venv/
+.env
+
+# IDE
+.vscode/
+
+# Data artifacts (keep public repo small)
+*.npz
+*.npy
+*.fits
+*.fit
+*.h5
+*.hdf5
+*.parquet
+*.pkl
+*.pt
+*.csv
+
+# Plots/outputs
+*.png
+*.pdf
+*.svg
+*.log
+
+# Generated suite outputs
+validation_results/
