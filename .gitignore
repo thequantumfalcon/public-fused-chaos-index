@@ -5,6 +5,7 @@ __pycache__/
 *.so
 *.egg-info/
 .dist/
+dist/
 build/
 .venv/
 .venv_pubcheck/
@@ -25,6 +26,10 @@ venv/
 *.pkl
 *.pt
 *.csv
+
+# Keep tiny example artifacts versioned
+!examples/**/data/**/*.npz
+!examples/**/data/**/*.npy
 
 # Plots/outputs
 *.png
@@ -51,3 +56,6 @@ _pubcheck_offline_out/
 
 # Local caches (never commit)
 .fci_cache/
+
+# MkDocs build output
+site/

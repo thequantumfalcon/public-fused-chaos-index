@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12 — 2026-01-02
+
+- Add MkDocs documentation site (Material theme) and API reference pages.
+- Add tiny committed example NPZ artifacts and generator script for offline demos.
+- Expand CI to run tests on Ubuntu + Windows and add extras/docs smoke checks.
+
 ## 0.1.11 — 2026-01-01
 
 - Tier-2 `fingerprint` now accepts cosmic NPZs without `quantum_mass` by computing it from `positions` (or `ra`+`dec`) when available.

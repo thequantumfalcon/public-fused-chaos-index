@@ -31,6 +31,19 @@ Or install everything optional:
 pip install -e ".[all]"
 ```
 
+Docs site (MkDocs):
+
+```bash
+pip install -e ".[docs]"
+python -m mkdocs serve
+```
+
+Docs maintenance (minimal):
+- Edit Markdown in `docs/`
+- Update navigation in `mkdocs.yml`
+- Preview locally with `python -m mkdocs serve`
+- CI (and Pages deploy, if enabled) runs `python -m mkdocs build --strict`
+
 ## Quick start
 
 Discover commands:

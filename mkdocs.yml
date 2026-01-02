@@ -1,0 +1,46 @@
+site_name: Public Fused Chaos Index
+repo_url: https://github.com/thequantumfalcon/public-fused-chaos-index
+repo_name: thequantumfalcon/public-fused-chaos-index
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Examples: examples.md
+  - CLI:
+      - Overview: cli/index.md
+      - Tier 1: cli/tier1.md
+      - Tier 2: cli/tier2.md
+      - Suites & Validators: cli/suites_validators.md
+  - Artifacts:
+      - NPZ Contracts: artifacts/npz_contracts.md
+      - Manifests: artifacts/manifests.md
+  - API Reference:
+      - fused_chaos_index: api/fused_chaos_index.md
+      - tier1: api/tier1.md
+      - tier2: api/tier2.md
+  - Development:
+      - Contributing: contributing.md
+      - Maintaining Docs: maintaining_docs.md
+      - Release process: release.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_source: false
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
