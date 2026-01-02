@@ -128,6 +128,10 @@ fci tier2 universality-sweep --inputs run1.npz run2.npz --threshold 5e-7
 # Tier-2 Path 2: cosmic vs Collatz fingerprint (distribution fingerprints + correlations)
 fci tier2 fingerprint --collatz collatz_run.npz --smacs smacs_catalog.npz
 
+# If your SMACS NPZ lacks `quantum_mass`, the command will compute it if `positions`
+# (or `ra`+`dec`) are present; tune the solver with:
+fci tier2 fingerprint --collatz collatz_run.npz --smacs smacs_positions_kappa.npz --k 10 --n-modes 10
+
 # Tier-2: Collatz NPZ summary (manuscript-ready stats + spectral gap ratio if eigenvalues are present)
 fci tier2 collatz-summary --collatz collatz_run.npz --baseline baseline_run.npz --runtime-seconds 136
 

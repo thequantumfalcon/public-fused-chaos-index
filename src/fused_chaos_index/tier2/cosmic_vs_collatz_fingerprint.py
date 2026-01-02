@@ -10,6 +10,8 @@ from typing import Any
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
 
+from ..tier1.add_quantum_mass import compute_quantum_mass_from_positions, positions_from_radec
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -45,8 +47,15 @@ def _safe_log10(x: np.ndarray) -> np.ndarray:
 
 
 def _load_npz(path: Path) -> dict[str, np.ndarray]:
-    data = np.load(path, allow_pickle=True)
-    return {k: data[k] for k in data.files}
+    with np.load(path, allow_pickle=True) as data:
+        return {k: data[k] for k in data.files}
+
+
+def _extract_quantum_mass(data: dict[str, np.ndarray]) -> np.ndarray:
+    for key in ("quantum_mass", "mass", "M"):
+        if key in data:
+            return np.asarray(data[key], dtype=np.float64).reshape(-1)
+    raise KeyError("input NPZ missing one of: quantum_mass, mass, M")
 
 
 @dataclass(frozen=True)
@@ -66,9 +75,19 @@ class Fingerprint:
 
 def _fingerprint(name: str, values: np.ndarray, *, threshold: float) -> Fingerprint:
     x = np.asarray(values, dtype=np.float64).reshape(-1)
-    lx = _safe_log10(x)
 
-    q05, q25, q50, q75, q95 = np.quantile(lx, [0.05, 0.25, 0.50, 0.75, 0.95])
+    finite = np.isfinite(x)
+    x_f = x[finite]
+
+    # Some domains (e.g., kappa) can be negative. For log-space fingerprints,
+    # only use strictly-positive values.
+    x_pos = x_f[x_f > 0]
+    lx = _safe_log10(x_pos) if x_pos.size else np.array([], dtype=np.float64)
+
+    if lx.size:
+        q05, q25, q50, q75, q95 = np.quantile(lx, [0.05, 0.25, 0.50, 0.75, 0.95])
+    else:
+        q05 = q25 = q50 = q75 = q95 = float("nan")
 
     return Fingerprint(
         name=str(name),
@@ -78,10 +97,10 @@ def _fingerprint(name: str, values: np.ndarray, *, threshold: float) -> Fingerpr
         log10_q50=float(q50),
         log10_q75=float(q75),
         log10_q95=float(q95),
-        mean=float(np.mean(x)) if x.size else float("nan"),
-        median=float(np.median(x)) if x.size else float("nan"),
-        frac_below_threshold=float(np.mean(x < float(threshold))) if x.size else float("nan"),
-        entropy_bits=_entropy_bits(lx, bins=80),
+        mean=float(np.mean(x_f)) if x_f.size else float("nan"),
+        median=float(np.median(x_f)) if x_f.size else float("nan"),
+        frac_below_threshold=float(np.mean(x_f < float(threshold))) if x_f.size else float("nan"),
+        entropy_bits=_entropy_bits(lx, bins=80) if lx.size else float("nan"),
     )
 
 
@@ -92,6 +111,8 @@ def run_cosmic_vs_collatz_fingerprint(
     smacs_npz: Path,
     flamingo_npz: Path | None = None,
     threshold: float = 5e-7,
+    k: int = 10,
+    n_modes: int = 10,
 ) -> dict[str, Any]:
     """Tier-2 Path 2: cross-domain fingerprint comparison.
 
@@ -114,15 +135,34 @@ def run_cosmic_vs_collatz_fingerprint(
         raise FileNotFoundError(f"Missing SMACS input: {smacs_npz}")
 
     collatz = _load_npz(collatz_npz)
-    if "quantum_mass" not in collatz:
-        raise KeyError("Collatz NPZ missing key: quantum_mass")
-    collatz_mass = np.asarray(collatz["quantum_mass"], dtype=np.float64)
+    collatz_mass = _extract_quantum_mass(collatz)
 
     smacs = _load_npz(smacs_npz)
-    if "quantum_mass" not in smacs or "kappa" not in smacs:
-        raise KeyError("SMACS NPZ must contain keys: quantum_mass, kappa")
-    smacs_mass = np.asarray(smacs["quantum_mass"], dtype=np.float64)
-    smacs_kappa = np.asarray(smacs["kappa"], dtype=np.float64)
+    if "kappa" not in smacs:
+        raise KeyError("SMACS NPZ must contain key: kappa")
+    smacs_kappa = np.asarray(smacs["kappa"], dtype=np.float64).reshape(-1)
+
+    smacs_mass_source = "provided"
+    if "quantum_mass" in smacs:
+        smacs_mass = np.asarray(smacs["quantum_mass"], dtype=np.float64).reshape(-1)
+    elif "positions" in smacs:
+        smacs_mass_source = "computed_positions"
+        qm, _evals = compute_quantum_mass_from_positions(
+            positions=np.asarray(smacs["positions"], dtype=np.float64),
+            k=int(k),
+            n_modes=int(n_modes),
+        )
+        smacs_mass = np.asarray(qm, dtype=np.float64).reshape(-1)
+    elif "ra" in smacs and "dec" in smacs:
+        smacs_mass_source = "computed_ra_dec"
+        pos = positions_from_radec(ra_deg=np.asarray(smacs["ra"]), dec_deg=np.asarray(smacs["dec"]))
+        qm, _evals = compute_quantum_mass_from_positions(positions=pos, k=int(k), n_modes=int(n_modes))
+        smacs_mass = np.asarray(qm, dtype=np.float64).reshape(-1)
+    else:
+        raise KeyError("SMACS NPZ must contain either quantum_mass, positions, or (ra and dec)")
+
+    if smacs_mass.shape[0] != smacs_kappa.shape[0]:
+        raise ValueError("SMACS quantum_mass and kappa length mismatch")
 
     fp_collatz = _fingerprint("Collatz", collatz_mass, threshold=float(threshold))
     fp_smacs_mass = _fingerprint("SMACS_M", smacs_mass, threshold=float(threshold))
@@ -173,10 +213,13 @@ def run_cosmic_vs_collatz_fingerprint(
     np.savez(
         out_npz,
         threshold=np.float64(threshold),
+        k=np.int64(int(k)),
+        n_modes=np.int64(int(n_modes)),
         collatz_file=str(collatz_npz),
         collatz_sha256=_sha256_file(collatz_npz),
         smacs_file=str(smacs_npz),
         smacs_sha256=_sha256_file(smacs_npz),
+        smacs_quantum_mass_source=np.array([smacs_mass_source], dtype=object),
         flamingo_file=(str(flamingo_npz) if flamingo_npz is not None else ""),
         flamingo_sha256=(_sha256_file(flamingo_npz) if flamingo_npz is not None and flamingo_npz.exists() else ""),
         collatz_fingerprint=np.array([asdict(fp_collatz)], dtype=object),
@@ -204,10 +247,13 @@ def run_cosmic_vs_collatz_fingerprint(
         "status": "OK",
         "params": {
             "threshold": float(threshold),
+            "k": int(k),
+            "n_modes": int(n_modes),
             "collatz": str(collatz_npz),
             "collatz_sha256": _sha256_file(collatz_npz),
             "smacs": str(smacs_npz),
             "smacs_sha256": _sha256_file(smacs_npz),
+            "smacs_quantum_mass_source": smacs_mass_source,
             "flamingo": (str(flamingo_npz) if flamingo_npz is not None else None),
             "flamingo_sha256": (_sha256_file(flamingo_npz) if flamingo_npz is not None and flamingo_npz.exists() else None),
         },

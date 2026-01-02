@@ -41,6 +41,10 @@ def _positions_from_radec(ra_deg: np.ndarray, dec_deg: np.ndarray) -> np.ndarray
     return np.column_stack([x, y, z]).astype(np.float64)
 
 
+def positions_from_radec(*, ra_deg: np.ndarray, dec_deg: np.ndarray) -> np.ndarray:
+    return _positions_from_radec(ra_deg, dec_deg)
+
+
 def _build_knn_laplacian(positions: np.ndarray, *, k: int) -> Any:
     pos = np.asarray(positions, dtype=np.float64)
     if pos.ndim != 2 or pos.shape[0] < 3:
@@ -71,6 +75,11 @@ def _build_knn_laplacian(positions: np.ndarray, *, k: int) -> Any:
     degrees = np.asarray(a.sum(axis=1)).reshape(-1)
     d = coo_matrix((degrees, (np.arange(n), np.arange(n))), shape=(n, n)).tocsr()
     return d - a
+
+
+def compute_quantum_mass_from_positions(*, positions: np.ndarray, k: int = 10, n_modes: int = 10) -> tuple[np.ndarray, np.ndarray]:
+    lap = _build_knn_laplacian(np.asarray(positions, dtype=np.float64), k=int(k))
+    return _compute_quantum_mass(lap, n_modes=int(n_modes))
 
 
 def _compute_quantum_mass(laplacian: Any, *, n_modes: int) -> tuple[np.ndarray, np.ndarray]:

@@ -97,6 +97,39 @@ class Tier2Tests(unittest.TestCase):
             self.assertEqual(data.get("experiment"), "Tier-2 Path 2: Cosmic vs Collatz Fingerprint")
             self.assertTrue((out_dir / "tier2_path2_fingerprint_results.npz").exists())
 
+    def test_tier2_fingerprint_computes_smacs_quantum_mass(self):
+        from fused_chaos_index.tier2.cosmic_vs_collatz_fingerprint import run_cosmic_vs_collatz_fingerprint
+
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            out_dir = td_path / "out"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            collatz_mass = np.abs(rng.normal(size=(300,))).astype(np.float64) + 1e-6
+            collatz_npz = td_path / "collatz.npz"
+            np.savez(collatz_npz, quantum_mass=collatz_mass)
+
+            # SMACS-like artifact: positions + kappa, but no quantum_mass.
+            positions = rng.normal(size=(250, 3)).astype(np.float64)
+            kappa = rng.normal(size=(250,)).astype(np.float64)
+            smacs_npz = td_path / "smacs_positions.npz"
+            np.savez(smacs_npz, positions=positions, kappa=kappa)
+
+            m = run_cosmic_vs_collatz_fingerprint(
+                output_dir=out_dir,
+                collatz_npz=collatz_npz,
+                smacs_npz=smacs_npz,
+                flamingo_npz=None,
+                threshold=5e-7,
+                k=8,
+                n_modes=6,
+            )
+            self.assertEqual(m.get("status"), "OK")
+            self.assertEqual(m.get("params", {}).get("smacs_quantum_mass_source"), "computed_positions")
+
     def test_tier2_collatz_summary_writes_manifest(self):
         from fused_chaos_index.tier2.collatz_run_summary import run_collatz_run_summary
 

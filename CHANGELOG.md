@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.11 — 2026-01-01
+
+- Tier-2 `fingerprint` now accepts cosmic NPZs without `quantum_mass` by computing it from `positions` (or `ra`+`dec`) when available.
+- Fix Windows file-handle behavior by ensuring NPZ loads are closed promptly.
+
 ## 0.1.10 — 2026-01-01
 
 - Add Tier-1 `add-quantum-mass` command to compute `quantum_mass` + eigenvalues from a local NPZ (positions or RA/Dec).

@@ -123,6 +123,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional FLAMINGO NPZ artifact (loaded if present)",
     )
     t2_f.add_argument("--threshold", type=float, default=5e-7)
+    t2_f.add_argument("--k", type=int, default=10, help="Only used if SMACS quantum_mass must be computed")
+    t2_f.add_argument("--n-modes", type=int, default=10, help="Only used if SMACS quantum_mass must be computed")
 
     t2_c = tier2_sub.add_parser(
         "collatz-summary",
@@ -397,6 +399,8 @@ def main(argv: list[str] | None = None) -> int:
                 smacs_npz=args.smacs,
                 flamingo_npz=args.flamingo,
                 threshold=float(args.threshold),
+                k=int(args.k),
+                n_modes=int(args.n_modes),
             )
             out_path = run_dir / "tier2_path2_fingerprint_manifest.json"
             print(str(out_path))

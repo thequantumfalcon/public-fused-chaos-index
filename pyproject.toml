@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "public-fused-chaos-index"
-version = "0.1.10"
+version = "0.1.11"
 description = "Public-clean release of the Fused Chaos Index (FCI) algorithms (package + CLI + suite runner)"
 readme = "README.md"
 requires-python = ">=3.10"
