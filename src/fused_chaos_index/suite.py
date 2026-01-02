@@ -64,6 +64,9 @@ def default_run_dir(base_output_dir: Path) -> Path:
 def run_public_suite(
     *,
     run_dir: Path,
+    profile: str = "smoke",
+    allow_network: bool = False,
+    frontier_clusters_json: Path | None = None,
     operational_n_galaxies: int = 2000,
     operational_k: int = 10,
     operational_seed: int = 42,
@@ -91,6 +94,10 @@ def run_public_suite(
 
     steps: list[StepResult] = []
 
+    prof = str(profile).strip().lower()
+    if prof not in {"smoke", "offline", "full"}:
+        raise ValueError("profile must be one of: smoke, offline, full")
+
     steps.append(
         _run_step(
             "operational",
@@ -117,26 +124,80 @@ def run_public_suite(
         )
     )
 
+    if prof in {"offline", "full"}:
+        from .suites.universality import run_universality_ground_truth_suite
+
+        steps.append(
+            _run_step(
+                "universality_ground_truth",
+                lambda: run_universality_ground_truth_suite(
+                    output_dir=run_dir,
+                    allow_network=bool(allow_network),
+                    k=int(operational_k),
+                    n_modes=10,
+                ),
+            )
+        )
+
+    if prof == "full":
+        if frontier_clusters_json is None:
+            steps.append(
+                StepResult(
+                    name="frontier_evidence",
+                    status="SKIP",
+                    duration_sec=0.0,
+                    details={"reason": "frontier_clusters_json not provided"},
+                )
+            )
+        else:
+            from .suites.frontier import run_frontier_evidence_suite
+
+            steps.append(
+                _run_step(
+                    "frontier_evidence",
+                    lambda: run_frontier_evidence_suite(
+                        output_dir=run_dir,
+                        clusters_json=frontier_clusters_json,
+                        k=int(operational_k),
+                        n_modes=10,
+                        n_perm=2000,
+                        seed=int(operational_seed),
+                    ).manifest,
+                )
+            )
+
+    # If this run produced suite manifests in run_dir, prefer them for gating
+    # when the configured manifest paths do not exist.
+    frontier_for_gate = frontier_manifest
+    universality_for_gate = universality_manifest
+
+    produced_frontier = run_dir / "frontier_evidence_suite_manifest.json"
+    produced_universality = run_dir / "universality_ground_truth_suite_manifest.json"
+    if not frontier_for_gate.exists() and produced_frontier.exists():
+        frontier_for_gate = produced_frontier
+    if not universality_for_gate.exists() and produced_universality.exists():
+        universality_for_gate = produced_universality
+
     # Gate step is special: SKIP if manifests not present.
     gate_t0 = time.time()
     gate_details: dict[str, Any] = {
-        "frontier_manifest": str(frontier_manifest),
-        "universality_manifest": str(universality_manifest),
+        "frontier_manifest": str(frontier_for_gate),
+        "universality_manifest": str(universality_for_gate),
         "issues": [],
     }
     gate_status = "OK"
 
-    frontier_exists = frontier_manifest.exists()
-    universality_exists = universality_manifest.exists()
+    frontier_exists = frontier_for_gate.exists()
+    universality_exists = universality_for_gate.exists()
     if not frontier_exists and not universality_exists:
         gate_status = "SKIP"
         gate_details["reason"] = "no suite manifests found"
     else:
         issues: list[str] = []
         if frontier_exists:
-            issues.extend(check_frontier_manifest(frontier_manifest))
+            issues.extend(check_frontier_manifest(frontier_for_gate))
         if universality_exists:
-            issues.extend(check_universality_manifest(universality_manifest))
+            issues.extend(check_universality_manifest(universality_for_gate))
         gate_details["issues"] = issues
         if issues:
             gate_status = "ERROR"
@@ -156,6 +217,8 @@ def run_public_suite(
         "package_version": _package_version(),
         "python": _python_info(),
         "run_dir": str(run_dir),
+        "profile": prof,
+        "allow_network": bool(allow_network),
         "steps": [
             {
                 "name": s.name,

@@ -24,6 +24,10 @@ astro = [
   "astroquery>=0.4.6",
   "requests>=2.31",
 ]
+sim = [
+  "h5py>=3.9",
+  "halotools>=0.9",
+]
 viz = [
   "matplotlib>=3.7",
   "seaborn>=0.13",
@@ -35,6 +39,8 @@ all = [
   "astropy>=5.3",
   "astroquery>=0.4.6",
   "requests>=2.31",
+  "h5py>=3.9",
+  "halotools>=0.9",
   "matplotlib>=3.7",
   "seaborn>=0.13",
   "scikit-learn>=1.3",

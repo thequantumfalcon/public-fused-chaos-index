@@ -75,6 +75,23 @@ def main(argv: list[str] | None = None) -> int:
 
     suite_run = suite_sub.add_parser("run", help="Run the public suite")
     suite_run.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    suite_run.add_argument(
+        "--profile",
+        choices=["smoke", "offline", "full"],
+        default="smoke",
+        help="Which suite profile to run",
+    )
+    suite_run.add_argument(
+        "--allow-network",
+        action="store_true",
+        help="Allow network downloads for validators (default: blocked)",
+    )
+    suite_run.add_argument(
+        "--frontier-clusters-json",
+        type=Path,
+        default=None,
+        help="Clusters spec JSON for Frontier evidence step (only used in --profile full)",
+    )
     suite_run.add_argument("--n-galaxies", type=int, default=2000)
     suite_run.add_argument("--k", type=int, default=10)
     suite_run.add_argument("--seed", type=int, default=42)
@@ -93,6 +110,63 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path("validation_results/universality_ground_truth_suite_manifest.json"),
     )
+
+    suite_uni = suite_sub.add_parser("universality", help="Run universality ground-truth suite")
+    suite_uni.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    suite_uni.add_argument(
+        "--allow-network",
+        action="store_true",
+        help="Allow network downloads for validators (default: blocked)",
+    )
+    suite_uni.add_argument(
+        "--tng-base-path",
+        type=Path,
+        default=Path("./TNG300-1/output"),
+        help="Path to local TNG dataset root",
+    )
+    suite_uni.add_argument("--skip-tng", action="store_true", help="Skip running the TNG validator")
+    suite_uni.add_argument("--k", type=int, default=10)
+    suite_uni.add_argument("--n-modes", type=int, default=10)
+    suite_uni.add_argument("--bolshoi-max-n", type=int, default=5000)
+
+    suite_front = suite_sub.add_parser("frontier", help="Run Frontier evidence suite on local NPZ artifacts")
+    suite_front.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    suite_front.add_argument(
+        "--clusters-json",
+        type=Path,
+        required=True,
+        help="JSON describing clusters and local NPZ paths",
+    )
+    suite_front.add_argument("--k", type=int, default=10)
+    suite_front.add_argument("--n-modes", type=int, default=10)
+    suite_front.add_argument("--n-perm", type=int, default=2000)
+    suite_front.add_argument("--seed", type=int, default=42)
+
+    validate = sub.add_parser("validate", help="Run validators (safe: SKIP if deps/data missing)")
+    validate_sub = validate.add_subparsers(dest="validate_cmd", required=True)
+
+    val_b = validate_sub.add_parser("bolshoi", help="Bolshoi (Halotools) ground-truth validator")
+    val_b.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    val_b.add_argument("--allow-network", action="store_true")
+    val_b.add_argument("--max-n", type=int, default=5000)
+    val_b.add_argument("--k", type=int, default=10)
+    val_b.add_argument("--n-modes", type=int, default=10)
+    val_b.add_argument("--seed", type=int, default=42)
+
+    val_t = validate_sub.add_parser("tng", help="IllustrisTNG ground-truth validator")
+    val_t.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    val_t.add_argument(
+        "--base-path",
+        type=Path,
+        default=Path("./TNG300-1/output"),
+        help="Path to local TNG dataset root",
+    )
+    val_t.add_argument("--snapshot", type=int, default=99)
+    val_t.add_argument("--min-stellar-mass", type=float, default=1e9)
+    val_t.add_argument("--max-n", type=int, default=5000)
+    val_t.add_argument("--k", type=int, default=10)
+    val_t.add_argument("--n-modes", type=int, default=10)
+    val_t.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args(argv)
 
@@ -192,6 +266,9 @@ def main(argv: list[str] | None = None) -> int:
             run_dir = default_run_dir(args.output_dir)
             manifest = run_public_suite(
                 run_dir=run_dir,
+                profile=args.profile,
+                allow_network=bool(args.allow_network),
+                frontier_clusters_json=args.frontier_clusters_json,
                 operational_n_galaxies=args.n_galaxies,
                 operational_k=args.k,
                 operational_seed=args.seed,
@@ -204,6 +281,74 @@ def main(argv: list[str] | None = None) -> int:
                 universality_manifest=args.universality_manifest,
             )
             out_path = Path(manifest["run_dir"]) / "suite_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.suite_cmd == "universality":
+            from .suites.universality import run_universality_ground_truth_suite
+
+            run_dir = default_run_dir(args.output_dir)
+            run_universality_ground_truth_suite(
+                output_dir=run_dir,
+                allow_network=bool(args.allow_network),
+                tng_base_path=args.tng_base_path,
+                k=args.k,
+                n_modes=args.n_modes,
+                bolshoi_max_n=args.bolshoi_max_n,
+                skip_tng=bool(args.skip_tng),
+            )
+            out_path = run_dir / "universality_ground_truth_suite_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.suite_cmd == "frontier":
+            from .suites.frontier import run_frontier_evidence_suite
+
+            run_dir = default_run_dir(args.output_dir)
+            run_frontier_evidence_suite(
+                output_dir=run_dir,
+                clusters_json=args.clusters_json,
+                k=int(args.k),
+                n_modes=int(args.n_modes),
+                n_perm=int(args.n_perm),
+                seed=int(args.seed),
+            )
+            out_path = run_dir / "frontier_evidence_suite_manifest.json"
+            print(str(out_path))
+            return 0
+
+    if args.cmd == "validate":
+        if args.validate_cmd == "bolshoi":
+            from .validators.bolshoi import run_bolshoi_ground_truth
+
+            run_dir = default_run_dir(args.output_dir)
+            run_bolshoi_ground_truth(
+                output_dir=run_dir,
+                max_n=int(args.max_n),
+                k=int(args.k),
+                n_modes=int(args.n_modes),
+                seed=int(args.seed),
+                allow_network=bool(args.allow_network),
+            )
+            out_path = run_dir / "halotools_bolshoi_ground_truth_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.validate_cmd == "tng":
+            from .validators.tng import run_tng_ground_truth
+
+            run_dir = default_run_dir(args.output_dir)
+            run_tng_ground_truth(
+                base_path=args.base_path,
+                output_dir=run_dir,
+                snapshot=int(args.snapshot),
+                min_stellar_mass=float(args.min_stellar_mass),
+                max_n=int(args.max_n),
+                k=int(args.k),
+                n_modes=int(args.n_modes),
+                seed=int(args.seed),
+            )
+            out_path = run_dir / "tng_validation_manifest.json"
             print(str(out_path))
             return 0
 

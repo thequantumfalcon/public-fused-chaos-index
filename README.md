@@ -22,7 +22,13 @@ pip install -e .
 Optional extras (only needed for certain commands):
 
 ```bash
-pip install -e ".[astro,viz,ml]"
+pip install -e ".[astro,viz,ml,sim]"
+```
+
+Or install everything optional:
+
+```bash
+pip install -e ".[all]"
 ```
 
 ## Quick start
@@ -38,6 +44,42 @@ Offline-first suite (recommended first run):
 ```bash
 fci suite run
 ```
+
+Suite profiles:
+
+```bash
+fci suite run --profile smoke
+fci suite run --profile offline
+fci suite run --profile full
+```
+
+Universality ground-truth suite (safe: SKIP if deps/data missing):
+
+```bash
+fci suite universality
+```
+
+Frontier evidence suite (requires local artifacts):
+
+```bash
+fci suite frontier --clusters-json path/to/clusters.json
+```
+
+`clusters.json` format:
+
+```json
+{
+	"clusters": [
+		{
+			"cluster_id": "a2744",
+			"cluster_name": "Abell 2744",
+			"npz_path": "a2744_artifact.npz"
+		}
+	]
+}
+```
+
+Each `.npz` must contain `positions` (N×D) and `kappa` (N).
 
 Operational (synthetic Euclid-like catalog):
 
@@ -67,6 +109,17 @@ fci tier1 score-single --prediction-card-json card.json --artifact-json artifact
 fci tier1 score-frontier --prediction-card card.json --frontier-manifest frontier_manifest.json
 fci gate
 ```
+
+Validators (safe: SKIP if deps/data missing):
+
+```bash
+fci validate bolshoi
+fci validate tng --base-path path/to/TNG300-1/output
+```
+
+Notes:
+- `bolshoi` requires `pip install -e ".[sim]"` and will not download unless you pass `--allow-network`.
+- `tng` requires a local TNG group catalog and the `illustris_python` package (not bundled as a dependency).
 
 ## Run tests
 

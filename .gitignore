@@ -33,3 +33,6 @@ venv/
 
 # Generated suite outputs
 validation_results/
+
+# Local caches (never commit)
+.fci_cache/
