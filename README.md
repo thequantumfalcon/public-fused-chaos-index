@@ -132,6 +132,9 @@ fci tier2 collatz-summary --collatz collatz_run.npz --baseline baseline_run.npz 
 
 # Tier-2 Path 3: stopping time vs quantum-mass association test
 fci tier2 stopping-time --input collatz_run.npz --sample-size 200000 --max-steps 5000
+
+# Tier-2: optional 16M discovery plot (writes manifest/results; PNG only if matplotlib is available)
+fci tier2 plot-16m --collatz collatz_run.npz
 ```
 
 Notes:

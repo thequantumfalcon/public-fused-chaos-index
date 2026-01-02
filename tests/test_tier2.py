@@ -132,6 +132,31 @@ class Tier2Tests(unittest.TestCase):
             self.assertEqual(data.get("experiment"), "Tier-2: Collatz Run Summary (Manuscript Stats)")
             self.assertTrue((out_dir / "tier2_collatz_run_summary_results.npz").exists())
 
+    def test_tier2_plot_16m_writes_manifest(self):
+        from fused_chaos_index.tier2.plot_16m_discovery import run_plot_16m_discovery
+
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            out_dir = td_path / "out"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            mass = np.abs(rng.normal(size=(2000,))).astype(np.float64) + 1e-6
+            evals = np.sort(np.abs(rng.normal(size=(8,))).astype(np.float64) + 1e-3)
+            collatz_npz = td_path / "collatz.npz"
+            np.savez(collatz_npz, quantum_mass=mass, eigenvalues=evals)
+
+            m = run_plot_16m_discovery(output_dir=out_dir, collatz_npz=collatz_npz, threshold=5e-7, cosmic_target=68.0)
+            self.assertIn(m.get("status"), {"OK", "SKIP"})
+
+            mp = out_dir / "tier2_plot_16m_discovery_manifest.json"
+            self.assertTrue(mp.exists())
+            data = json.loads(mp.read_text(encoding="utf-8"))
+            self.assertEqual(data.get("experiment"), "Tier-2: Plot 16M Discovery Figure")
+            self.assertTrue((out_dir / "tier2_plot_16m_discovery_results.npz").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
