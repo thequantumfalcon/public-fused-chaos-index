@@ -90,6 +90,31 @@ def main(argv: list[str] | None = None) -> int:
     t2_s.add_argument("--bootstrap", action="store_true")
     t2_s.add_argument("--bootstrap-iters", type=int, default=200)
 
+    t2_f = tier2_sub.add_parser(
+        "fingerprint",
+        help="Tier-2 Path 2: compare Collatz vs cosmic artifacts (distribution fingerprints + correlations)",
+    )
+    t2_f.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    t2_f.add_argument(
+        "--collatz",
+        type=Path,
+        required=True,
+        help="Collatz NPZ containing quantum_mass and optionally eigenvalues",
+    )
+    t2_f.add_argument(
+        "--smacs",
+        type=Path,
+        required=True,
+        help="SMACS NPZ containing quantum_mass and kappa",
+    )
+    t2_f.add_argument(
+        "--flamingo",
+        type=Path,
+        default=None,
+        help="Optional FLAMINGO NPZ artifact (loaded if present)",
+    )
+    t2_f.add_argument("--threshold", type=float, default=5e-7)
+
     gate = sub.add_parser("gate", help="Falsification/null-test presence gate for suite manifests")
     gate.add_argument("--frontier-manifest", type=Path, default=Path("validation_results/frontier_evidence_suite_manifest.json"))
     gate.add_argument("--universality-manifest", type=Path, default=Path("validation_results/universality_ground_truth_suite_manifest.json"))
@@ -298,6 +323,21 @@ def main(argv: list[str] | None = None) -> int:
                 bootstrap_iters=int(args.bootstrap_iters),
             )
             out_path = run_dir / "tier2_path3_stopping_time_vs_mass_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.tier2_cmd == "fingerprint":
+            from .tier2.cosmic_vs_collatz_fingerprint import run_cosmic_vs_collatz_fingerprint
+
+            run_dir = default_run_dir(args.output_dir)
+            run_cosmic_vs_collatz_fingerprint(
+                output_dir=run_dir,
+                collatz_npz=args.collatz,
+                smacs_npz=args.smacs,
+                flamingo_npz=args.flamingo,
+                threshold=float(args.threshold),
+            )
+            out_path = run_dir / "tier2_path2_fingerprint_manifest.json"
             print(str(out_path))
             return 0
 

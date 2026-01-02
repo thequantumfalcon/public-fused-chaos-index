@@ -124,6 +124,9 @@ Tier-2 analyses (artifact-driven, offline-first):
 # Tier-2 Path 1: compare multiple quantum-mass artifacts under one threshold
 fci tier2 universality-sweep --inputs run1.npz run2.npz --threshold 5e-7
 
+# Tier-2 Path 2: cosmic vs Collatz fingerprint (distribution fingerprints + correlations)
+fci tier2 fingerprint --collatz collatz_run.npz --smacs smacs_catalog.npz
+
 # Tier-2 Path 3: stopping time vs quantum-mass association test
 fci tier2 stopping-time --input collatz_run.npz --sample-size 200000 --max-steps 5000
 ```

@@ -61,6 +61,42 @@ class Tier2Tests(unittest.TestCase):
             self.assertEqual(data.get("experiment"), "Tier-2 Path 3: Stopping Time vs Quantum Mass")
             self.assertTrue((out_dir / "tier2_path3_stopping_time_vs_mass_results.npz").exists())
 
+    def test_tier2_fingerprint_writes_manifest(self):
+        from fused_chaos_index.tier2.cosmic_vs_collatz_fingerprint import run_cosmic_vs_collatz_fingerprint
+
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            out_dir = td_path / "out"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            collatz_mass = np.abs(rng.normal(size=(500,))).astype(np.float64) + 1e-6
+            collatz_eigs = np.sort(np.abs(rng.normal(size=(8,))).astype(np.float64) + 1e-3)
+            collatz_npz = td_path / "collatz.npz"
+            np.savez(collatz_npz, quantum_mass=collatz_mass, eigenvalues=collatz_eigs)
+
+            smacs_mass = np.abs(rng.normal(size=(400,))).astype(np.float64) + 1e-6
+            smacs_kappa = smacs_mass * 0.25 + rng.normal(scale=1e-7, size=smacs_mass.shape).astype(np.float64)
+            smacs_npz = td_path / "smacs.npz"
+            np.savez(smacs_npz, quantum_mass=smacs_mass, kappa=smacs_kappa)
+
+            m = run_cosmic_vs_collatz_fingerprint(
+                output_dir=out_dir,
+                collatz_npz=collatz_npz,
+                smacs_npz=smacs_npz,
+                flamingo_npz=None,
+                threshold=5e-7,
+            )
+            self.assertEqual(m.get("status"), "OK")
+
+            mp = out_dir / "tier2_path2_fingerprint_manifest.json"
+            self.assertTrue(mp.exists())
+            data = json.loads(mp.read_text(encoding="utf-8"))
+            self.assertEqual(data.get("experiment"), "Tier-2 Path 2: Cosmic vs Collatz Fingerprint")
+            self.assertTrue((out_dir / "tier2_path2_fingerprint_results.npz").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
