@@ -67,6 +67,8 @@ def run_public_suite(
     profile: str = "smoke",
     allow_network: bool = False,
     frontier_clusters_json: Path | None = None,
+    tng_base_path: Path = Path("./TNG300-1/output"),
+    skip_tng: bool = False,
     operational_n_galaxies: int = 2000,
     operational_k: int = 10,
     operational_seed: int = 42,
@@ -133,6 +135,8 @@ def run_public_suite(
                 lambda: run_universality_ground_truth_suite(
                     output_dir=run_dir,
                     allow_network=bool(allow_network),
+                    tng_base_path=tng_base_path,
+                    skip_tng=bool(skip_tng),
                     k=int(operational_k),
                     n_modes=10,
                 ),

@@ -38,5 +38,11 @@ validation_results/
 _smoke_inputs/
 _smoke_out/
 
+# Local ad-hoc capability test outputs
+_captest/
+_tng_npz_test/
+_universality_npz_test/
+_full_profile_npz_test/
+
 # Local caches (never commit)
 .fci_cache/

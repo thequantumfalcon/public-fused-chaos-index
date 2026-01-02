@@ -57,9 +57,19 @@ class SuiteTests(unittest.TestCase):
     def test_public_suite_offline_includes_universality(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td) / "run"
+            # Provide a derived TNG-like NPZ so the universality suite can run TNG in NPZ mode.
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            positions = rng.normal(size=(200, 3)).astype(np.float64)
+            mass = np.abs(rng.normal(size=(200,))).astype(np.float64) + 1e-3
+            tng_npz = Path(td) / "tng_like.npz"
+            np.savez(tng_npz, positions=positions, mass=mass)
+
             manifest = run_public_suite(
                 run_dir=run_dir,
                 profile="offline",
+                tng_base_path=tng_npz,
                 operational_n_galaxies=200,
                 operational_k=6,
                 operational_seed=1,
@@ -75,6 +85,9 @@ class SuiteTests(unittest.TestCase):
             # Universality suite should always write its suite manifest and CSV.
             self.assertTrue((run_dir / "universality_ground_truth_suite_manifest.json").exists())
             self.assertTrue((run_dir / "universality_ground_truth_comparison.csv").exists())
+
+            uni = json.loads((run_dir / "universality_ground_truth_suite_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(uni["results"]["tng"]["status"], "OK")
 
             # Gate should be able to see the produced universality manifest.
             gate = [s for s in data["steps"] if s["name"] == "gate"][0]
@@ -154,6 +167,26 @@ class SuiteTests(unittest.TestCase):
             tng_data = json.loads(tng_path.read_text(encoding="utf-8"))
             self.assertIn(tng_data.get("status"), {"OK", "SKIP", "ERROR"})
             self.assertIn(tng.status, {"OK", "SKIP", "ERROR"})
+
+    def test_tng_validator_accepts_npz_artifact(self):
+        from fused_chaos_index.validators.tng import run_tng_ground_truth
+
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            out_dir = td_path / "out"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            import numpy as np
+
+            rng = np.random.default_rng(0)
+            positions = rng.normal(size=(200, 3)).astype(np.float64)
+            mass = np.abs(rng.normal(size=(200,))).astype(np.float64) + 1e-3
+            npz_path = td_path / "tng_like.npz"
+            np.savez(npz_path, positions=positions, mass=mass)
+
+            res = run_tng_ground_truth(base_path=npz_path, output_dir=out_dir, k=6, n_modes=5)
+            self.assertEqual(res.status, "OK")
+            self.assertTrue((out_dir / "tng_validation_manifest.json").exists())
 
 
 if __name__ == "__main__":

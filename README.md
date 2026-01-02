@@ -53,6 +53,14 @@ fci suite run --profile offline
 fci suite run --profile full
 ```
 
+Pass-through options for the universality step (used in `offline`/`full` profiles):
+
+```bash
+fci suite run --profile full --tng-base-path path/to/TNG300-1/output
+fci suite run --profile full --tng-base-path path/to/illustris_validation_results.npz
+fci suite run --profile full --skip-tng
+```
+
 Universality ground-truth suite (safe: SKIP if deps/data missing):
 
 ```bash
@@ -115,11 +123,14 @@ Validators (safe: SKIP if deps/data missing):
 ```bash
 fci validate bolshoi
 fci validate tng --base-path path/to/TNG300-1/output
+fci validate tng --base-path path/to/derived_tng_like_artifact.npz
 ```
 
 Notes:
 - `bolshoi` requires `pip install -e ".[sim]"` and will not download unless you pass `--allow-network`.
-- `tng` requires a local TNG group catalog and the `illustris_python` package (not bundled as a dependency).
+- `tng` supports two input modes:
+	- Raw mode: a local TNG group catalog and the `illustris_python` package (not bundled as a dependency).
+	- Derived NPZ mode: a `.npz` containing `positions` (N×D) and `mass` (N), for offline-safe validation without bundling large raw catalogs.
 
 ## Run tests
 

@@ -96,6 +96,79 @@ def run_tng_ground_truth(
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / "tng_validation_manifest.json"
 
+    if not base_path.exists():
+        payload = {
+            "experiment": "IllustrisTNG Ground-Truth Validation",
+            "time_utc": _now_iso(),
+            "status": "SKIP",
+            "reason": f"base_path not found: {base_path}",
+        }
+        manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return TNGResult(status="SKIP", results=payload)
+
+    # Support lightweight derived artifacts:
+    # - base_path can be a local .npz with arrays: positions (N,D) and mass (N,)
+    # This enables validation without distributing huge raw group catalogs.
+    if base_path.is_file() and base_path.suffix.lower() == ".npz":
+        try:
+            data = np.load(base_path)
+            positions = np.asarray(data["positions"], dtype=np.float64)
+            mass_true = np.asarray(data["mass"], dtype=np.float64).reshape(-1)
+
+            if positions.shape[0] != mass_true.shape[0]:
+                raise ValueError("positions and mass length mismatch")
+
+            hmat = _build_knn_hamiltonian(positions, k=int(k))
+            M, evals = _compute_quantum_mass(hmat, n_modes=int(n_modes))
+
+            rho_s, p_s = _spearman(M, mass_true)
+            r_p, p_p = _pearson(M, mass_true)
+            rho_s_log, p_s_log = _spearman(np.log10(M + 1e-12), np.log10(mass_true + 1e-12))
+
+            verdict = "FAIL"
+            if abs(rho_s) > 0.3 and p_s < 1e-6:
+                verdict = "PASS"
+            elif abs(rho_s) > 0.2 and p_s < 1e-3:
+                verdict = "MODERATE"
+
+            payload = {
+                "experiment": "IllustrisTNG Ground-Truth Validation",
+                "time_utc": _now_iso(),
+                "status": "OK",
+                "params": {
+                    "source": "npz",
+                    "npz_path": str(base_path),
+                    "snapshot": int(snapshot),
+                    "min_stellar_mass": float(min_stellar_mass),
+                    "max_n": int(max_n),
+                    "k": int(k),
+                    "n_modes": int(n_modes),
+                    "seed": int(seed),
+                },
+                "results": {
+                    "n": int(len(M)),
+                    "rho_spearman": float(rho_s),
+                    "p_spearman": float(p_s),
+                    "r_pearson": float(r_p),
+                    "p_pearson": float(p_p),
+                    "rho_spearman_log": float(rho_s_log),
+                    "p_spearman_log": float(p_s_log),
+                    "verdict": verdict,
+                    "eigenvalues": evals.tolist(),
+                },
+            }
+            manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+            return TNGResult(status="OK", results=payload)
+        except Exception as e:
+            payload = {
+                "experiment": "IllustrisTNG Ground-Truth Validation",
+                "time_utc": _now_iso(),
+                "status": "ERROR",
+                "error": f"{type(e).__name__}: {e}",
+            }
+            manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+            return TNGResult(status="ERROR", results=payload)
+
     try:
         import importlib.util
 
@@ -115,16 +188,6 @@ def run_tng_ground_truth(
             "time_utc": _now_iso(),
             "status": "SKIP",
             "reason": f"illustris_python unavailable: {type(e).__name__}: {e}",
-        }
-        manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-        return TNGResult(status="SKIP", results=payload)
-
-    if not base_path.exists():
-        payload = {
-            "experiment": "IllustrisTNG Ground-Truth Validation",
-            "time_utc": _now_iso(),
-            "status": "SKIP",
-            "reason": f"base_path not found: {base_path}",
         }
         manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return TNGResult(status="SKIP", results=payload)

@@ -92,6 +92,13 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Clusters spec JSON for Frontier evidence step (only used in --profile full)",
     )
+    suite_run.add_argument(
+        "--tng-base-path",
+        type=Path,
+        default=Path("./TNG300-1/output"),
+        help="Path to local TNG dataset root OR a derived NPZ artifact with positions+mass",
+    )
+    suite_run.add_argument("--skip-tng", action="store_true", help="Skip running the TNG validator")
     suite_run.add_argument("--n-galaxies", type=int, default=2000)
     suite_run.add_argument("--k", type=int, default=10)
     suite_run.add_argument("--seed", type=int, default=42)
@@ -269,6 +276,8 @@ def main(argv: list[str] | None = None) -> int:
                 profile=args.profile,
                 allow_network=bool(args.allow_network),
                 frontier_clusters_json=args.frontier_clusters_json,
+                tng_base_path=args.tng_base_path,
+                skip_tng=bool(args.skip_tng),
                 operational_n_galaxies=args.n_galaxies,
                 operational_k=args.k,
                 operational_seed=args.seed,
