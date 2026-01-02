@@ -113,6 +113,7 @@ Tier-1 helpers:
 
 ```bash
 fci tier1 extract-radec --catalog path/to/catalog.fits --out-npz catalog_radec.npz
+fci tier1 add-quantum-mass --input-npz catalog.npz --out-npz catalog_with_qm.npz --k 10 --n-modes 10
 fci tier1 score-single --prediction-card-json card.json --artifact-json artifact.json
 fci tier1 score-frontier --prediction-card card.json --frontier-manifest frontier_manifest.json
 fci gate

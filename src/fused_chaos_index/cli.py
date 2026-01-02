@@ -9,6 +9,7 @@ from .syk_collatz import compute_syk_collatz_fci_constant
 from .meta_tools import ablation_sensitivity, combine_evidence_heuristic, keyword_risk_audit
 from .gate import check_frontier_manifest, check_universality_manifest
 from .tier1.extract_radec import extract_radec_to_npz
+from .tier1.add_quantum_mass import add_quantum_mass_to_catalog_npz
 from .tier1.score_frontier import load_thresholds, score_frontier_manifest
 from .tier1.score_single import score_single_artifact
 from .suite import default_run_dir, run_public_suite
@@ -65,6 +66,14 @@ def main(argv: list[str] | None = None) -> int:
     sf.add_argument("--prediction-card", type=Path, required=True)
     sf.add_argument("--frontier-manifest", type=Path, required=True)
     sf.add_argument("--out-json", type=Path, default=Path("tier1_frontier_accuracy.json"))
+
+    aqm = tier1_sub.add_parser("add-quantum-mass", help="Compute quantum_mass from a local NPZ catalog (positions or RA/Dec)")
+    aqm.add_argument("--input-npz", type=Path, required=True)
+    aqm.add_argument("--out-npz", type=Path, required=True)
+    aqm.add_argument("--k", type=int, default=10)
+    aqm.add_argument("--n-modes", type=int, default=10)
+    aqm.add_argument("--threshold", type=float, default=5e-7, help="Only used to compute dark_percent")
+    aqm.add_argument("--force", action="store_true", help="Overwrite existing quantum_mass/eigenvalues if present")
 
     tier2 = sub.add_parser("tier2", help="Tier-2 analyses (artifact-driven, offline-first)")
     tier2_sub = tier2.add_subparsers(dest="tier2_cmd", required=True)
@@ -314,6 +323,18 @@ def main(argv: list[str] | None = None) -> int:
                 ra_col=args.ra_col,
                 dec_col=args.dec_col,
                 max_rows=args.max_rows,
+            )
+            print(json.dumps(out, indent=2, sort_keys=True))
+            return 0
+
+        if args.tier1_cmd == "add-quantum-mass":
+            out = add_quantum_mass_to_catalog_npz(
+                catalog_npz=args.input_npz,
+                out_npz=args.out_npz,
+                k=int(args.k),
+                n_modes=int(args.n_modes),
+                threshold=float(args.threshold),
+                force=bool(args.force),
             )
             print(json.dumps(out, indent=2, sort_keys=True))
             return 0
