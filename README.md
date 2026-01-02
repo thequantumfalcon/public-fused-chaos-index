@@ -118,6 +118,20 @@ fci tier1 score-frontier --prediction-card card.json --frontier-manifest frontie
 fci gate
 ```
 
+Tier-2 analyses (artifact-driven, offline-first):
+
+```bash
+# Tier-2 Path 1: compare multiple quantum-mass artifacts under one threshold
+fci tier2 universality-sweep --inputs run1.npz run2.npz --threshold 5e-7
+
+# Tier-2 Path 3: stopping time vs quantum-mass association test
+fci tier2 stopping-time --input collatz_run.npz --sample-size 200000 --max-steps 5000
+```
+
+Notes:
+- Inputs must contain one of `quantum_mass` (preferred), `mass`, or `M`.
+- Outputs are written into a timestamped run folder under `--output-dir` as NPZ + JSON manifest.
+
 Validators (safe: SKIP if deps/data missing):
 
 ```bash

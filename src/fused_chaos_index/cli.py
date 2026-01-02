@@ -66,6 +66,30 @@ def main(argv: list[str] | None = None) -> int:
     sf.add_argument("--frontier-manifest", type=Path, required=True)
     sf.add_argument("--out-json", type=Path, default=Path("tier1_frontier_accuracy.json"))
 
+    tier2 = sub.add_parser("tier2", help="Tier-2 analyses (artifact-driven, offline-first)")
+    tier2_sub = tier2.add_subparsers(dest="tier2_cmd", required=True)
+
+    t2_u = tier2_sub.add_parser(
+        "universality-sweep",
+        help="Tier-2 Path 1: compare multiple quantum-mass artifacts under a shared threshold",
+    )
+    t2_u.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    t2_u.add_argument("--inputs", type=Path, nargs="+", required=True, help="Input NPZ files (must contain quantum_mass/mass/M)")
+    t2_u.add_argument("--threshold", type=float, default=5e-7)
+    t2_u.add_argument("--plot", action="store_true", help="Write a small PNG plot (requires matplotlib)")
+
+    t2_s = tier2_sub.add_parser(
+        "stopping-time",
+        help="Tier-2 Path 3: stopping time vs quantum mass association test (artifact-driven)",
+    )
+    t2_s.add_argument("--output-dir", type=Path, default=Path("validation_results"))
+    t2_s.add_argument("--input", type=Path, required=True, help="Input NPZ (must contain quantum_mass/mass/M)")
+    t2_s.add_argument("--sample-size", type=int, default=200_000)
+    t2_s.add_argument("--max-steps", type=int, default=5000)
+    t2_s.add_argument("--seed", type=int, default=42)
+    t2_s.add_argument("--bootstrap", action="store_true")
+    t2_s.add_argument("--bootstrap-iters", type=int, default=200)
+
     gate = sub.add_parser("gate", help="Falsification/null-test presence gate for suite manifests")
     gate.add_argument("--frontier-manifest", type=Path, default=Path("validation_results/frontier_evidence_suite_manifest.json"))
     gate.add_argument("--universality-manifest", type=Path, default=Path("validation_results/universality_ground_truth_suite_manifest.json"))
@@ -243,6 +267,38 @@ def main(argv: list[str] | None = None) -> int:
             summary = score_frontier_manifest(manifest_path=args.frontier_manifest, thresholds=th)
             args.out_json.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
             print(str(args.out_json))
+            return 0
+
+    if args.cmd == "tier2":
+        if args.tier2_cmd == "universality-sweep":
+            from .tier2.universality_sweep import run_universality_sweep
+
+            run_dir = default_run_dir(args.output_dir)
+            run_universality_sweep(
+                output_dir=run_dir,
+                inputs=list(args.inputs),
+                threshold=float(args.threshold),
+                plot=bool(args.plot),
+            )
+            out_path = run_dir / "tier2_path1_universality_manifest.json"
+            print(str(out_path))
+            return 0
+
+        if args.tier2_cmd == "stopping-time":
+            from .tier2.stopping_time_vs_mass import run_stopping_time_vs_mass
+
+            run_dir = default_run_dir(args.output_dir)
+            run_stopping_time_vs_mass(
+                output_dir=run_dir,
+                input_npz=args.input,
+                sample_size=int(args.sample_size),
+                max_steps=int(args.max_steps),
+                seed=int(args.seed),
+                bootstrap=bool(args.bootstrap),
+                bootstrap_iters=int(args.bootstrap_iters),
+            )
+            out_path = run_dir / "tier2_path3_stopping_time_vs_mass_manifest.json"
+            print(str(out_path))
             return 0
 
     if args.cmd == "gate":
