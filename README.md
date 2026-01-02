@@ -12,6 +12,9 @@ Included:
 
 Not included:
 - Large datasets (`.npz`, `.fits`, etc.), scraping/downloader scripts, internal research notes, or one-off experiments.
+	- Exception: a few tiny example artifacts are versioned under `examples/data/` for offline demos.
+
+Docs site: https://thequantumfalcon.github.io/public-fused-chaos-index/
 
 ## Install
 
@@ -55,7 +58,7 @@ fci --help
 Offline-first suite (recommended first run):
 
 ```bash
-fci suite run
+fci suite run --profile offline
 ```
 
 Suite profiles:

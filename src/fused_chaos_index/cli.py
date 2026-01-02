@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
 
     t2_c = tier2_sub.add_parser(
         "collatz-summary",
-        help="Summarize a Collatz NPZ (dark%, stats, and spectral gap ratio if available)",
+            help="Summarize a Collatz NPZ (dark-matter stats, and spectral gap ratio if available)",
     )
     t2_c.add_argument("--output-dir", type=Path, default=Path("validation_results"))
     t2_c.add_argument(
