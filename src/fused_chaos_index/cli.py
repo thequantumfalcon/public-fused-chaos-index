@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .operational import StreamlinedFCIPipeline
@@ -13,6 +14,7 @@ from .tier1.add_quantum_mass import add_quantum_mass_to_catalog_npz
 from .tier1.score_frontier import load_thresholds, score_frontier_manifest
 from .tier1.score_single import score_single_artifact
 from .suite import default_run_dir, run_public_suite
+from .run_manifest import create_run_manifest, collect_outputs_from_dir
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -276,6 +278,12 @@ def main(argv: list[str] | None = None) -> int:
     val_t.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args(argv)
+    
+    # Reconstruct the command for manifest - use provided argv or sys.argv
+    if argv is not None:
+        cli_command = ["fci"] + argv
+    else:
+        cli_command = sys.argv
 
     if args.cmd == "operational":
         pipeline = StreamlinedFCIPipeline(k_neighbors=args.k, seed=args.seed)
@@ -362,12 +370,22 @@ def main(argv: list[str] | None = None) -> int:
             from .tier2.universality_sweep import run_universality_sweep
 
             run_dir = default_run_dir(args.output_dir)
-            run_universality_sweep(
+            result = run_universality_sweep(
                 output_dir=run_dir,
                 inputs=list(args.inputs),
                 threshold=float(args.threshold),
                 plot=bool(args.plot),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tier2_path1_universality_manifest.json"
             print(str(out_path))
             return 0
@@ -376,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
             from .tier2.stopping_time_vs_mass import run_stopping_time_vs_mass
 
             run_dir = default_run_dir(args.output_dir)
-            run_stopping_time_vs_mass(
+            result = run_stopping_time_vs_mass(
                 output_dir=run_dir,
                 input_npz=args.input,
                 sample_size=int(args.sample_size),
@@ -385,6 +403,16 @@ def main(argv: list[str] | None = None) -> int:
                 bootstrap=bool(args.bootstrap),
                 bootstrap_iters=int(args.bootstrap_iters),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tier2_path3_stopping_time_vs_mass_manifest.json"
             print(str(out_path))
             return 0
@@ -393,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
             from .tier2.cosmic_vs_collatz_fingerprint import run_cosmic_vs_collatz_fingerprint
 
             run_dir = default_run_dir(args.output_dir)
-            run_cosmic_vs_collatz_fingerprint(
+            result = run_cosmic_vs_collatz_fingerprint(
                 output_dir=run_dir,
                 collatz_npz=args.collatz,
                 smacs_npz=args.smacs,
@@ -402,6 +430,16 @@ def main(argv: list[str] | None = None) -> int:
                 k=int(args.k),
                 n_modes=int(args.n_modes),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tier2_path2_fingerprint_manifest.json"
             print(str(out_path))
             return 0
@@ -410,7 +448,7 @@ def main(argv: list[str] | None = None) -> int:
             from .tier2.collatz_run_summary import run_collatz_run_summary
 
             run_dir = default_run_dir(args.output_dir)
-            run_collatz_run_summary(
+            result = run_collatz_run_summary(
                 output_dir=run_dir,
                 collatz_npz=args.collatz,
                 baseline_npz=args.baseline,
@@ -418,6 +456,16 @@ def main(argv: list[str] | None = None) -> int:
                 cosmic_target=float(args.cosmic_target),
                 runtime_seconds=(None if args.runtime_seconds is None else float(args.runtime_seconds)),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tier2_collatz_run_summary_manifest.json"
             print(str(out_path))
             return 0
@@ -426,12 +474,22 @@ def main(argv: list[str] | None = None) -> int:
             from .tier2.plot_16m_discovery import run_plot_16m_discovery
 
             run_dir = default_run_dir(args.output_dir)
-            run_plot_16m_discovery(
+            result = run_plot_16m_discovery(
                 output_dir=run_dir,
                 collatz_npz=args.collatz,
                 threshold=float(args.threshold),
                 cosmic_target=float(args.cosmic_target),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tier2_plot_16m_discovery_manifest.json"
             print(str(out_path))
             return 0
@@ -480,6 +538,16 @@ def main(argv: list[str] | None = None) -> int:
                 frontier_manifest=args.frontier_manifest,
                 universality_manifest=args.universality_manifest,
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=manifest.get("overall_status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = Path(manifest["run_dir"]) / "suite_manifest.json"
             print(str(out_path))
             return 0
@@ -488,7 +556,7 @@ def main(argv: list[str] | None = None) -> int:
             from .suites.universality import run_universality_ground_truth_suite
 
             run_dir = default_run_dir(args.output_dir)
-            run_universality_ground_truth_suite(
+            result = run_universality_ground_truth_suite(
                 output_dir=run_dir,
                 allow_network=bool(args.allow_network),
                 tng_base_path=args.tng_base_path,
@@ -497,6 +565,16 @@ def main(argv: list[str] | None = None) -> int:
                 bolshoi_max_n=args.bolshoi_max_n,
                 skip_tng=bool(args.skip_tng),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "universality_ground_truth_suite_manifest.json"
             print(str(out_path))
             return 0
@@ -505,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
             from .suites.frontier import run_frontier_evidence_suite
 
             run_dir = default_run_dir(args.output_dir)
-            run_frontier_evidence_suite(
+            result = run_frontier_evidence_suite(
                 output_dir=run_dir,
                 clusters_json=args.clusters_json,
                 k=int(args.k),
@@ -513,6 +591,16 @@ def main(argv: list[str] | None = None) -> int:
                 n_perm=int(args.n_perm),
                 seed=int(args.seed),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.manifest.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "frontier_evidence_suite_manifest.json"
             print(str(out_path))
             return 0
@@ -522,7 +610,7 @@ def main(argv: list[str] | None = None) -> int:
             from .validators.bolshoi import run_bolshoi_ground_truth
 
             run_dir = default_run_dir(args.output_dir)
-            run_bolshoi_ground_truth(
+            result = run_bolshoi_ground_truth(
                 output_dir=run_dir,
                 max_n=int(args.max_n),
                 k=int(args.k),
@@ -530,6 +618,16 @@ def main(argv: list[str] | None = None) -> int:
                 seed=int(args.seed),
                 allow_network=bool(args.allow_network),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "halotools_bolshoi_ground_truth_manifest.json"
             print(str(out_path))
             return 0
@@ -538,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
             from .validators.tng import run_tng_ground_truth
 
             run_dir = default_run_dir(args.output_dir)
-            run_tng_ground_truth(
+            result = run_tng_ground_truth(
                 base_path=args.base_path,
                 output_dir=run_dir,
                 snapshot=int(args.snapshot),
@@ -548,6 +646,16 @@ def main(argv: list[str] | None = None) -> int:
                 n_modes=int(args.n_modes),
                 seed=int(args.seed),
             )
+            
+            # Create run-level manifest
+            outputs = collect_outputs_from_dir(run_dir)
+            create_run_manifest(
+                run_dir=run_dir,
+                command=cli_command,
+                status=result.get("status", "OK"),
+                outputs=outputs,
+            )
+            
             out_path = run_dir / "tng_validation_manifest.json"
             print(str(out_path))
             return 0
