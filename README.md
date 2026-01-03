@@ -162,6 +162,38 @@ Notes:
 - Inputs must contain one of `quantum_mass` (preferred), `mass`, or `M`.
 - Outputs are written into a timestamped run folder under `--output-dir` as NPZ + JSON manifest.
 
+## Reproducible outputs contract
+
+All CLI commands that write outputs follow a standardized contract for reproducibility and provenance tracking:
+
+**Run folder structure:**
+- Each CLI command that writes outputs creates a timestamped run folder under `--output-dir` (e.g., `public_suite_20260103_143055`)
+- The run folder contains all artifacts produced by that command invocation
+
+**Run-level manifest (`manifest.json`):**
+- Every run folder contains a `manifest.json` at its root
+- This manifest provides execution context and metadata:
+  - `manifest_schema_version`: Schema version (currently "1")
+  - `run_id`: Unique identifier (typically the run folder name)
+  - `created_utc`: Timestamp of execution
+  - `command`: Full CLI command that was executed
+  - `package_version`: Version of public-fused-chaos-index
+  - `environment`: Python, numpy, scipy versions, and platform info
+  - `status`: Run status (`OK`, `ERROR`, or `SKIP`)
+  - `outputs`: List of output artifacts with name, relative path, and type
+
+**Per-command manifests:**
+- Commands also write per-command manifests (e.g., `tier2_path1_universality_manifest.json`)
+- These contain command-specific details, results, and statistics
+- Per-command manifests complement the run-level manifest
+
+**Compatibility:**
+- The contract allows additive changes (new fields)
+- Breaking changes require a schema version bump
+- Tools consuming manifests should gracefully handle unknown fields
+
+See [docs/artifacts/run_folders.md](docs/artifacts/run_folders.md) for the detailed manifest schema specification.
+
 Validators (safe: SKIP if deps/data missing):
 
 ```bash
