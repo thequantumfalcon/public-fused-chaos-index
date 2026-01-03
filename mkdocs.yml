@@ -22,6 +22,7 @@ nav:
   - Artifacts:
       - NPZ Contracts: artifacts/npz_contracts.md
       - Manifests: artifacts/manifests.md
+      - Run Folders: artifacts/run_folders.md
   - API Reference:
       - fused_chaos_index: api/fused_chaos_index.md
       - tier1: api/tier1.md
